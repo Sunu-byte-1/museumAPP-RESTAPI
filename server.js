@@ -74,23 +74,33 @@ app.use(helmet({
 }));
 
 // Configuration CORS
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://musee-des-civilisations-noires.vercel.app'
+    ];
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Autoriser les requêtes sans origine (applications mobiles, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://musee-mcn.vercel.app'
-    ];
-    
+    // Vérifier si l'origin est dans la liste autorisée
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Non autorisé par CORS'));
+      return callback(null, true);
     }
+    
+    // Autoriser tous les domaines Vercel (pour les previews)
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Origin non autorisée
+    console.log('❌ Origin non autorisée:', origin);
+    callback(new Error('Non autorisé par CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -257,7 +267,6 @@ const startServer = async () => {
   try {
     // Initialiser l'admin par défaut
     await initializeDefaultAdmin();
-    
     // Démarrer le serveur
     app.listen(PORT, () => {
       console.log(`
